@@ -1,0 +1,22 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- The HTML 4.01 Transitional DOCTYPE declaration-->
+<!-- above set at the top of the file will set     -->
+<!-- the browser's rendering engine into           -->
+<!-- "Quirks Mode". Replacing this declaration     -->
+<!-- with a "Standards Mode" doctype is supported, -->
+<!-- but may lead to some differences in layout.   -->
+
+<html>
+ <head><title>Sample Application Servlet Page</title></head>
+
+  <body bgcolor=white>
+  <p>Please enter your search and click the button "Search"!</p>
+    <form action='/geosearch/textsearch/search' method='get'>
+    	<div>input: <textarea name='q' rows='1' cols='40'></textarea></div>
+    	<div>type: <textarea name='type' rows='1' cols='20'></textarea></div>
+    	<div>country: <textarea name='country' rows='1' cols='20'></textarea></div>
+    	<div>language: <textarea name='lang' rows='1' cols='20'></textarea></div>
+    	<div><input type='submit' value='Search' /></div>
+    </form>
+  </body>
+</html>
