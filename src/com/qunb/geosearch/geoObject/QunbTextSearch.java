@@ -21,18 +21,24 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 
+import com.google.appengine.api.datastore.DatastoreService;
+import com.google.appengine.api.datastore.DatastoreServiceFactory;
+import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.qunb.fuzzymatch.LetterSimilarity;
 import com.qunb.fuzzymatch.LetterSimilarity.CouplingLevel;
 
 public class QunbTextSearch {
-	private String input;
-	private String type;
-	private String country;
-	private String lang;
-	private String datastore;
-	private List<JSONObject> result;
+	private volatile DatastoreService datastore;
+	private volatile String input;
+	private volatile String type;
+	private volatile String country;
+	private volatile String lang;
+	private volatile List<JSONObject> result;
 	
-	public QunbTextSearch(String input,String type,String country,String lang,String datastore) throws Exception{
+	public QunbTextSearch(String input,String type,String country,String lang) throws Exception{
 		if(input.contains(",")){
 			
 			this.input =input.substring(0, input.indexOf(","));
@@ -48,235 +54,50 @@ public class QunbTextSearch {
 		}
 		this.type = type;
 		this.country = country;
-		this.datastore = datastore;//TODO change to a URL
+		this.datastore=  DatastoreServiceFactory.getDatastoreService();
 		this.result = this.constructResult();
 	}
-	
-	//TODO if ever not found, do a fuzzy match
-	@SuppressWarnings("deprecation")
-	public  List<JSONObject> getData_3parameters() throws IOException{
-		List<JSONObject> output = new ArrayList<JSONObject>();
-		JSONObject result = new JSONObject();
-		QunbS3Store mystore = new QunbS3Store(this.datastore);
-		System.out.println("There are "+mystore.getService().listItems().size()+" data in qunbstore");
-		List<String> list_item = mystore.getService().listItems();
-		if(list_item.contains("index.json")){
-			String index_content = new String(mystore.getService().getItem("index.json"),"utf-8");
-			JSONObject index = (JSONObject) JSONValue.parse(index_content);
-			if(!index.containsValue(this.input.toLowerCase())){
-				return output;
-			}
-		}
-		else{
-			JSONObject index = new JSONObject();
-			index.put("000000", "index");
-			String content = index.toJSONString();
-			byte[] cont = content.getBytes();
-			String filename = "index.json";
-			mystore.getService().storeItem(filename, cont);
-			System.out.println("---index stored---");
-		}
-		for (String item:list_item) {
-			if(item.endsWith(".json")&&!item.equals("index.json")){
-				String name = item;
-				String content = new String(mystore.getService().getItem(name),"utf-8");
-				result = (JSONObject) JSONValue.parse(content);
-				if(!(this.type==null||this.type.isEmpty())&&(this.country==null||this.country.isEmpty())){
-					if(result.get("fclName").toString().contains(this.type.toLowerCase())){
-						if(result.get("name").toString().toLowerCase().equals(this.input.toLowerCase())){
-							System.out.println("---Result Found at Qunb---");
-							output.add(result);
-						}
-					}
-				}
-				else if((this.type==null||this.type.isEmpty())&&!(this.country==null||this.country.isEmpty())){
-					if(result.get("countryName").toString().toLowerCase().equals(this.country.toLowerCase())){
-						if(result.get("name").toString().toLowerCase().equals(this.input.toLowerCase())){
-							System.out.println("---Result Found at Qunb---");
-							output.add(result);
-						}
-					}
-				}
-				else if(!(this.type==null||this.type.isEmpty())&&!(this.country==null||this.country.isEmpty())){
-					if(result.get("fclName").toString().contains(this.type.toLowerCase())){
-						if(result.get("name").toString().toLowerCase().equals(this.input.toLowerCase())&&result.get("countryName").toString().toLowerCase().equals(this.country.toLowerCase())){
-							System.out.println("---Result Found at Qunb---");
-							output.add(result);
-						}
-					}
-				}
-			}
-		}
-		System.out.println("---"+output.size()+" results found---");
-		/* try to search on geonames in order to do the fuzzy match!
-		if(output.size()==0){
-			//add fuzzy match
-			System.out.println("----Launch the Fuzzy Match----");
-			for (String item:list_item) {
-				if(item.endsWith(".json")){
-					String name = item;
-					String content = new String(mystore.getService().getItem(name),"utf-8");
-					result = (JSONObject) JSONValue.parse(content);
-					if(LetterSimilarity.isSimilarEnough(result.get("toponymName").toString().toLowerCase(), this.input.toLowerCase(), CouplingLevel.LOW)&&result.get("countryName").toString().toLowerCase().equals(this.country.toLowerCase())){
-						System.out.println("---Match Found at Qunb---");
-						output.add(result);
-					}
-				}
-			}
-		}*/
-		
-		if(output.size()==0){
-			System.out.println("---Result Not Found at Qunb---");
-		}
-		return output;
-	}
-	public List<JSONObject> getData_countryCode() throws IOException{
-		List<JSONObject> output = new ArrayList<JSONObject>();
-		JSONObject result = new JSONObject();
-		QunbS3Store mystore = new QunbS3Store(this.datastore);
-		System.out.println("There are "+mystore.getService().listItems().size()+" data in qunbstore");
-		List<String> list_item = mystore.getService().listItems();
-		if(list_item.contains("index.json")){
-			String index_content = new String(mystore.getService().getItem("index.json"),"utf-8");
-			JSONObject index = (JSONObject) JSONValue.parse(index_content);
-			if(!index.containsValue(this.input.toLowerCase())){
-				return output;
-			}
-		}
-		else{
-			JSONObject index = new JSONObject();
-			index.put("000000", "index");
-			String content = index.toJSONString();
-			byte[] cont = content.getBytes();
-			String filename = "index.json";
-			mystore.getService().storeItem(filename, cont);
-			System.out.println("---index stored---");
-		}
-		boolean iscountryCode = false;
-		for (String item:list_item) {
-			if(item.endsWith(".json")&&!item.equals("index.json")){
-				String name = item;
-				String content = new String(mystore.getService().getItem(name),"utf-8");
-				result = (JSONObject) JSONValue.parse(content);
-				System.out.println(result.get("countryCode").toString());
-					if(result.get("countryCode").toString().toLowerCase().equals(this.input.toLowerCase())&&result.get("fcode").toString().equals("PCLI")){
-						output.add(result);
-					}
-			}
-		}
-		System.out.println("---"+output.size()+" results found---");
-		if(output.size()==0){
-			System.out.println("---Result Not Found at Qunb---");
-		}
-		return output;
-	}
-	public List<JSONObject> getData_1parameter() throws IOException{
-		List<JSONObject> output = new ArrayList<JSONObject>();
-		JSONObject result = new JSONObject();
-		QunbS3Store mystore = new QunbS3Store(this.datastore);
-		System.out.println("There are "+mystore.getService().listItems().size()+" data in qunbstore");
-		List<String> list_item = mystore.getService().listItems();
-		if(list_item.contains("index.json")){
-			String index_content = new String(mystore.getService().getItem("index.json"),"utf-8");
-			JSONObject index = (JSONObject) JSONValue.parse(index_content);
-			if(!index.containsValue(this.input.toLowerCase())){
-				return output;
-			}
-		}
-		else{
-			JSONObject index = new JSONObject();
-			index.put("000000", "index");
-			String content = index.toJSONString();
-			byte[] cont = content.getBytes();
-			String filename = "index.json";
-			mystore.getService().storeItem(filename, cont);
-			System.out.println("---index stored---");
-		}
-		System.out.println("There are "+mystore.getService().listItems().size()+" data in qunbstore");
-		for (String item:list_item) {
-			if(item.endsWith(".json")&&!item.equals("index.json")){
-				String name = item;
-				System.out.println(item);
-				String content = new String(mystore.getService().getItem(name),"utf-8");
 
-				result = (JSONObject) JSONValue.parse(content);
-				//System.out.println(result.get("name").toString());
-					if(result.get("name").toString().toLowerCase().equals(this.input.toLowerCase())){
-						System.out.println("---Result Found at Qunb---");
-						output.add(result);
-					}
-			}
-		}
-		System.out.println("---"+output.size()+" results found---");
-//		if(output.size()==0){
-//			for (String item:list_item) {
-//				if(item.endsWith(".json")){
-//					String name = item;
-//					String content = new String(mystore.getService().getItem(name),"utf-8");
-//					result = (JSONObject) JSONValue.parse(content);
-//					if(LetterSimilarity.isSimilarEnough(result.get("toponymName").toString().toLowerCase(), this.input.toLowerCase(), CouplingLevel.MODERATE)){
-//						System.out.println("---Match Found at Qunb---");
-//						output.add(result);
-//					}
-//				}
-//			}
-//			System.out.println("---"+output.size()+" match found---");
-//		}
-		if(output.size()==0){
-			System.out.println("---Result Not Found at Qunb---");
-		}
-		return output;
-	}
-	//problem!!!
+	
 	public List<JSONObject> constructResult() throws Exception{
 		List<JSONObject> mydata = new ArrayList<JSONObject>();
-		if((this.type==null||this.type.isEmpty())&&(this.country==null||this.country.isEmpty())&&this.input.length()!=2){
-			System.out.println("Search with one parameter");
-			mydata = this.getData_1parameter();
-		}
-		else if(this.input.length()==2){
-			System.out.println("Search with country code");
-			mydata = this.getData_countryCode();
-		}
-		else{
-			System.out.println("Search with  parameters");
-			mydata = this.getData_3parameters();
-		}
+		mydata = this.getData();
 		if(mydata.isEmpty()){
 			return null;
 		}
 		return mydata;
 	}
-	
-	public String getInput(){
-		return this.input;
+
+	@SuppressWarnings("deprecation")
+	public  synchronized List<JSONObject> getData() throws IOException{
+		List<JSONObject> output = new ArrayList<JSONObject>();
+		List<Entity> entities = new ArrayList<Entity>();
+		if (this.input.length() == 2) {
+			entities = GeoDataStore.searchCountryCode(this.input);
+		}
+		if (entities.size() == 0) {
+			entities = GeoDataStore.searchName(this.input, this.country, this.type);
+		}
+		for(Entity geo:entities){
+			JSONObject mygeo = new JSONObject();
+			mygeo = GeoNameOperation.EntitytoJson(geo);
+			output.add(mygeo);
+		}
+		if(output.size()==0){
+			System.out.println("---Result Not Found at Qunb---");
+		}
+		return output;
 	}
-	public String getType(){
-		return this.type;
-	}
-	public String getDataStore(){
-		return this.datastore;
-	}
-	
 	public List<Map<String,Object>> getResult(){
 		List<Map<String,Object>> list = new ArrayList<Map<String,Object>>();
 		if(this.result!=null){
 			for(int i = 0;i<this.result.size();i++){
 				Map<String,Object> tmpmap = new HashMap<String,Object>();
-				tmpmap.put("qunb:geoId", this.result.get(i).get("geonameId"));
-				tmpmap.put("qunb:geoName", this.result.get(i).get("name"));
-				tmpmap.put("qunb:geoLat", this.result.get(i).get("lat"));
-				tmpmap.put("qunb:geoLng", this.result.get(i).get("lng"));
-				tmpmap.put("qunb:geoType",this.result.get(i).get("fclName"));
-				tmpmap.put("qunb:geoAlterNames", this.result.get(i).get("alternateNames"));
-				tmpmap.put("qunb:population", this.result.get(i).get("population"));
-				tmpmap.put("qunb:fclcode",this.result.get(i).get("fcl"));
-				tmpmap.put("qunb:fcode",this.result.get(i).get("fcode"));
+				tmpmap = GeoNameOperation.JsonToMap(this.result.get(i));
 				list.add(tmpmap);
 			}
 		}
-		return list;
-		
+		return list;	
 	}
 	public static List<Map<String,Object>> classResult(List<Map<String,Object>> mylist){
 		for(int i =0;i<mylist.size()-1;i++){

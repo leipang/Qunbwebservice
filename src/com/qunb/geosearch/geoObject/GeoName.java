@@ -4,70 +4,52 @@ import javax.jdo.annotations.IdGeneratorStrategy;
 import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
-import com.google.appengine.api.datastore.Key;
 
-@PersistenceCapable
+import org.json.JSONException;
+import org.json.simple.JSONObject;
+
+
+
+import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.Key;
+import com.google.appengine.api.datastore.KeyFactory;
+
 public class GeoName {
-	@Persistent
-	private String toponymName;
-	
-	@Persistent
 	private String name;
-	
-	@Persistent
 	private double lat;
-	
-	@Persistent
 	private double lng;
-	
-	@PrimaryKey
-	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
-	private int geonameId;
-	
-	@Persistent
+	private String geonameId;
 	private String countryCode;
-	
-	@Persistent
 	private String countryName;
-	
-	@Persistent
 	private String fcl;
-	
-	@Persistent
 	private String fcode;
-	
-	@Persistent
 	private String alternateNames;
+	private String population;
+	private String fclName;
 	
-	public void setToponymName(String toponymName) {
-		this.toponymName = toponymName;
-	}
-	public String getToponymName() {
-		return toponymName;
-	}
 	public void setName(String name) {
 		this.name = name;
 	}
 	public String getName() {
 		return name;
 	}
-	public void setLat(double lat) {
-		this.lat = lat;
+	public void setLat(String lat) {
+		this.lat = Double.valueOf(lat);
 	}
 	public double getLat() {
-		return lat;
+		return this.lat;
 	}
-	public void setLng(double lng) {
-		this.lng = lng;
+	public void setLng(String lng) {
+		this.lng = Double.valueOf(lng);
 	}
 	public double getLng() {
-		return lng;
+		return this.lng;
 	}
-	public void setGeonameId(int geonameId) {
+	public void setGeonameId(String geonameId) {
 		this.geonameId = geonameId;
 	}
-	public int getGeonameId() {
-		return geonameId;
+	public String getGeonameId() {
+		return this.geonameId;
 	}
 	public void setCountryName(String countryName) {
 		this.countryName = countryName;
@@ -92,5 +74,48 @@ public class GeoName {
 	}
 	public String getFcl() {
 		return fcl;
+	}
+	public void setPopulation(String ppl) {
+		this.population = ppl;
+	}
+	public String getPopulation() {
+		return this.population;
+	}
+	public String getFclName(){
+		return this.fclName;
+	}
+	public void setFclName(String fclname){
+		this.fclName = fclname;
+	}
+	
+	public Entity toEntity(){
+		Key geo_key = KeyFactory.createKey("GeonameId", this.getGeonameId().toString());
+		Entity geo = new Entity("GeoName",geo_key);
+		geo.setProperty("geonameId", this.getGeonameId());
+		geo.setProperty("name", this.getName());
+		geo.setProperty("countryName", this.getCountryName());
+		geo.setProperty("countryCode", this.getCountryCode());
+		geo.setProperty("Lat", this.getLat());
+		geo.setProperty("Lng", this.getLng());
+		geo.setProperty("Fcl", this.getFcl());
+		geo.setProperty("Fcode", this.getFcode());
+		geo.setProperty("Population", this.getPopulation());
+		return geo;
+	}
+	
+	public  org.json.JSONObject toJson() throws JSONException{
+		org.json.JSONObject tmp = new org.json.JSONObject();
+		tmp.put("qunb:geoId", this.getGeonameId());
+		tmp.put("qunb:geoName",this.getName());
+		tmp.put("qunb:geoLat",this.getLat());
+		tmp.put("qunb:geoLng",this.getLng());
+		tmp.put("qunb:geoFcode",this.getFcode());
+		return tmp;
+	}
+	public String getAlternateNames() {
+		return alternateNames;
+	}
+	public void setAlternateNames(String alternateNames) {
+		this.alternateNames = alternateNames;
 	}
 }
